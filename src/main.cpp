@@ -14,8 +14,9 @@
 using namespace std;
 
 #define PORT 161
-#define BATCH 100 // need to change this
+#define BATCH 100  // number of largest possible batch size
 #define MAXLINE (sizeof(Message) * BATCH)
+#define TIMEOUT_USECONDS 100000 // 100 ms
 
 int main(int argc, char** argv) {
     int sockfd;
@@ -52,11 +53,19 @@ int main(int argc, char** argv) {
 }
 
 string poll(int sockfd, char* buf, const struct sockaddr_in servaddr){
-    // Send a message that we want work;
+    // set timeout
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = TIMEOUT_USECONDS;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        perror("Error setting up timeout.");
+        exit(EXIT_FAILURE);
+    }
+
     int i;
     socklen_t len;
     if(recvfrom(sockfd, (char*) buf, MAXLINE, MSG_WAITALL, (struct sockaddr*) &servaddr, &len) < 0){
-        perror ("Message request failed.");
+        perror ("Timeout Error: Failure to Receive Messages.");
         exit(EXIT_FAILURE);
     }
 
