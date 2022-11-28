@@ -7,11 +7,6 @@
 #include <sys/socket.h> 
 #include <sys/types.h> 
 #include <unistd.h> 
-<<<<<<< HEAD
-
-#include <iostream>
-#include <vector>
-=======
 
 #include <iostream>
 #include <vector>
@@ -20,57 +15,33 @@
 #define BATCH 100  // batch size
 #define MAXLINE (sizeof(Message) * BATCH)
 #define TIMEOUT 100000  // 100 ms
->>>>>>> ac7e44532dcabf8785d767d1b7ab471466fb2efe
 
 using namespace std;
 using nlohmann::json;
 
-<<<<<<< HEAD
-#define PORT 161
-#define BATCH 100  // batch size
-#define MAXLINE (sizeof(Message) * BATCH)
-#define TIMEOUT 100000  // 100 ms
-=======
 string poll(int sockfd, char* buf, const struct sockaddr_in servaddr);
 vector<Message> parseResponse(string response);
 bool process(vector<Message> messages);
->>>>>>> ac7e44532dcabf8785d767d1b7ab471466fb2efe
 
 int main(int argc, char** argv) {
   int sockfd;
   char buf[MAXLINE];
-<<<<<<< HEAD
   struct sockaddr_in servaddr, cliaddr;
 
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-=======
-  struct sockaddr_in servaddr;
-
-  if ((sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
->>>>>>> ac7e44532dcabf8785d767d1b7ab471466fb2efe
     perror("Socket creation failed.");
     exit(EXIT_FAILURE);
   }
 
-<<<<<<< HEAD
-  memset(&servaddr, 0, sizeof(servaddr));
-  memset(&servaddr, 0, sizeof(cliaddr));
-
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  servaddr.sin_port = htons(PORT);
-
-  if ((bind(sockfd, (const struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)) {
-=======
   // Clear and set memory
   bzero(&servaddr, sizeof(servaddr));
   servaddr.sin_family = AF_INET6;
-  servaddr.sin_addr.s_addr = htonl(INADDR_ANY); //TODO Replace with Amit's Server Address
+  servaddr.sin_addr.s_addr = htonl(INADDR_ANY); // TODO Replace with Amit's Server Address
+  // Best way to do this is to pass in host name as argument on runtime 
   servaddr.sin_port = htons(PORT);
  
   // Connect to server
   if ((connect(sockfd, (const struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)) {
->>>>>>> ac7e44532dcabf8785d767d1b7ab471466fb2efe
     perror("Bind failed.");
     exit(EXIT_FAILURE);
   }
