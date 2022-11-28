@@ -1,50 +1,57 @@
 #include <iostream>
-#include <Message.h>
-#include <netinet/in.h> 
-#include <arpa/inet.h>
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <unistd.h> 
-#include <string.h> 
-#include <sys/types.h> 
-#include <sys/socket.h> 
 #include <vector>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <Message.h>
+#include <json.hpp>
 
 
 using namespace std;
+using nlohmann::json;
 
-#define PORT 161
-#define BATCH 100  // number of largest possible batch size
+#define PORT 0  // Connects to first, open port
+#define BATCH 1024  // TODO
 #define MAXLINE (sizeof(Message) * BATCH)
 #define TIMEOUT_USECONDS 100000 // 100 ms
+
+string poll(int sockfd, char* buf, const struct sockaddr_in servaddr);
+vector<Message> parseResponse(string response);
+bool process(vector<Message> messages);
 
 int main(int argc, char** argv) {
     int sockfd;
     char buf[MAXLINE];
-    struct sockaddr_in servaddr, cliaddr;
+    struct sockaddr_in servaddr;
 
-    if( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
+    if( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0){
         perror("Socket creation failed.");
         exit(EXIT_FAILURE);
     }
 
-    memset(&servaddr, 0, sizeof(servaddr));
-    memset(&servaddr, 0, sizeof(cliaddr));
-
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    // Clear and set memory
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET6;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY); //TODO Replace with Amit's Server Address
     servaddr.sin_port = htons(PORT);
 
-    if( (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)){
-        perror ("bind failed.");
+    // connect to the server
+    if((connect(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)){
+        perror ("Connection failed.");
         exit(EXIT_FAILURE);
     }
 
     // Event Loop: Poll and Process
-    while(true){
-        string response = 
-        response = poll(sockfd, buf, cliaddr);
-        vector<Message> messages = parseResponse();
+    for(;;){
+        string response;
+        response = poll(sockfd, buf, servaddr);
+        vector<Message> messages = parseResponse(response);
         process(messages);
     }
 
@@ -57,6 +64,7 @@ string poll(int sockfd, char* buf, const struct sockaddr_in servaddr){
     struct timeval tv;
     tv.tv_sec = 0;
     tv.tv_usec = TIMEOUT_USECONDS;
+
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         perror("Error setting up timeout.");
         exit(EXIT_FAILURE);
@@ -64,6 +72,8 @@ string poll(int sockfd, char* buf, const struct sockaddr_in servaddr){
 
     int i;
     socklen_t len;
+
+    // TODO: Try again if error is recoverable
     if(recvfrom(sockfd, (char*) buf, MAXLINE, MSG_WAITALL, (struct sockaddr*) &servaddr, &len) < 0){
         perror ("Timeout Error: Failure to Receive Messages.");
         exit(EXIT_FAILURE);
@@ -74,9 +84,14 @@ string poll(int sockfd, char* buf, const struct sockaddr_in servaddr){
 }
 
 vector<Message> parseResponse(string response){
+    json j = json::parse(response);
+
+    // TODO Parse the form server sends and add messages to vector
+    int MAGIC_NUMBER = 3;  // Change 
+
     vector<Message> result;
-    for(int i = 0; i < sizeof(response) / sizeof(Message); i+= sizeof(Message)){
-        Message msg = Message::deserialize(response.substr(i, i + sizeof(Message)));
+    for(int i = 0; i < MAGIC_NUMBER; i++){
+        Message msg = Message::deserialize("message");
         result.push_back(msg);
     }
     return result;
