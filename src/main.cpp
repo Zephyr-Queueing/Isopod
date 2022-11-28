@@ -21,29 +21,55 @@ using nlohmann::json;
 #define MAXLINE (sizeof(Message) * BATCH)
 #define TIMEOUT_USECONDS 100000 // 100 ms
 
+// Requests batch of work from server
+// Args: 
+//  - sockfd: socket file descriptor
+//  - buf: the buffer to write into
+//  - servaddr: the servaddr struct for the server to connect to
+// Returns:
+//  - String: the payload returned from server (unparsed)
 string poll(int sockfd, char* buf, const struct sockaddr_in servaddr);
+
+// Parses the response from the server
+// Args: 
+//  - response: the string response from the server
+// Returns:
+//  - vector<Message>: the parsed messages in a vector
 vector<Message> parseResponse(string response);
+
+// Parses the response from the server
+// Args: 
+//  - vector<Message> messages: the messages to process (print payload).
+// Returns:
+//  - bool: true on success, false otherwise.
 bool process(vector<Message> messages);
 
+// Accepts server ip address as first arg
 int main(int argc, char** argv) {
+    if(argc != 2){
+        perror("Error: Incorrect number of arguments");
+        exit(EXIT_FAILURE);
+    }
+
     int sockfd;
     char buf[MAXLINE];
     struct sockaddr_in servaddr;
 
     if( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0){
-        perror("Socket creation failed.");
+        perror("Error: Socket creation failed.");
         exit(EXIT_FAILURE);
     }
 
     // Clear and set memory
     bzero(&servaddr, sizeof(servaddr));
+    in_addr_t ip = inet_addr(argv[1]);
     servaddr.sin_family = AF_INET6;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY); //TODO Replace with Amit's Server Address
+    servaddr.sin_addr.s_addr = htonl(ip);
     servaddr.sin_port = htons(PORT);
 
     // connect to the server
     if((connect(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)){
-        perror ("Connection failed.");
+        perror ("Error: Connection failed.");
         exit(EXIT_FAILURE);
     }
 
