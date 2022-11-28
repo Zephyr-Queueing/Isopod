@@ -1,12 +1,12 @@
 #include <Message.h>
 #include <arpa/inet.h>
-#include <netinet/in.h> 
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <string.h> 
-#include <sys/socket.h> 
-#include <sys/types.h> 
-#include <unistd.h> 
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <vector>
@@ -17,7 +17,6 @@
 #define TIMEOUT 100000  // 100 ms
 
 using namespace std;
-using nlohmann::json;
 
 // Requests batch of work from server
 // Args: 
