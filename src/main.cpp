@@ -7,25 +7,25 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <json.hpp>
 
 #include <iostream>
 #include <vector>
 
 #define PORT 0
-#define BATCH 100  // batch size
-#define MAXLINE (sizeof(Message) * BATCH)
+#define MAXLINE 2048
 #define TIMEOUT 100000  // 100 ms
 
 using namespace std;
+using nlohmann::json;
 
 // Requests batch of work from server
 // Args: 
 //  - sockfd: socket file descriptor
 //  - buf: the buffer to write into
-//  - servaddr: the servaddr struct for the server to connect to
 // Returns:
 //  - String: the payload returned from server (unparsed)
-string poll(int sockfd, char* buf, const struct sockaddr_in servaddr);
+string poll(int sockfd, char* buf);
 
 // Parses the response from the server
 // Args: 
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
 
   // Event Loop: Poll and Process
   while (true) {
-    string response = poll(sockfd, buf, cliaddr);
+    string response = poll(sockfd, buf);
     vector<Message> messages = parseResponse(response);
     process(messages);
   }
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
   return EXIT_SUCCESS;
 }
 
-string poll(int sockfd, char* buf, const struct sockaddr_in servaddr) {
+string poll(int sockfd, char* buf) {
   // set timeout
   struct timeval tv;
   tv.tv_sec = 0;
@@ -93,22 +93,43 @@ string poll(int sockfd, char* buf, const struct sockaddr_in servaddr) {
 
   int i;
   socklen_t len;
-  if (recvfrom(sockfd, (char*)buf, MAXLINE, MSG_WAITALL,
-               (struct sockaddr*)&servaddr, &len) < 0) {
-    perror("Timeout Error: Failure to Receive Messages.");
-    exit(EXIT_FAILURE);
+  string buffer_;
+
+  size_t find_position = buffer_.find('\0');
+  while (find_position == string::npos) {
+    int num_read;
+    if ((num_read = recv(sockfd, (char*) buf, MAXLINE, MSG_WAITALL)) < 0) {
+        perror("Timeout Error: Failure to Receive Messages.");
+        exit(EXIT_FAILURE);
+    }
+
+    if (num_read == 0) {
+      break;
+    } else if (num_read < 0) {
+        perror("Timeout Error: Failure to Receive Messages.");
+        exit(EXIT_FAILURE);
+    }
+    buffer_ += std::string(reinterpret_cast<char*>(buf), num_read);
+    find_position =  buffer_.find('\0');
   }
 
-  buf[i] = '\0';
-  return buf;
+  return buffer_;
 }
 
 vector<Message> parseResponse(string response) {
   vector<Message> result;
-  for (int i = 0; i < sizeof(response); i += sizeof(Message)) {
-    Message msg = Message::deserialize(response.substr(i, i + sizeof(Message)));
-    result.push_back(msg);
-  }
+  
+   // "{}{}{}\0"
+   int close_bracket = response.find("}");
+
+   while(close_bracket != string::npos){
+        Message m = Message::deserialize(response.substr(0, close_bracket + 1));
+        result.push_back(m);
+        
+        response = response.substr(close_bracket + 1);
+        int close_bracket = response.find("}");
+   }
+
   return result;
 }
 
