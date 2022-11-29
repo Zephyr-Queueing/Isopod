@@ -11,8 +11,9 @@
 #include <iostream>
 #include <vector>
 
-#define BATCH_SIZE "100"
-#define PORT 0
+#define BATCH_SIZE "2"
+#define BATCH_DELIM '*'
+#define PORT 51711
 #define BUF_SIZE 2048
 #define TIMEOUT 50000  // 50 ms
 
@@ -49,29 +50,28 @@ int main(int argc, char** argv) {
 
   int sockfd;
   char buf[BUF_SIZE];
-  struct sockaddr_in servaddr, cliaddr;
+  struct sockaddr_in6 servaddr, cliaddr;
 
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
     perror("Error - socket creation failed");
     exit(EXIT_FAILURE);
   }
 
   // clear and set memory
   bzero(&servaddr, sizeof(servaddr));
-  in_addr_t ip = inet_addr(argv[1]);
-  servaddr.sin_family = AF_INET6;
-  servaddr.sin_addr.s_addr = htonl(ip);
-  servaddr.sin_port = htons(PORT);
+  servaddr.sin6_family = AF_INET6;
+  inet_pton(AF_INET6, argv[1], &(servaddr.sin6_addr));
+  servaddr.sin6_port = htons(PORT);
 
   // connect to the server
-  if ((connect(sockfd, (const struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)) {
+  if ((connect(sockfd, (const struct sockaddr*) &servaddr, sizeof(servaddr)) < 0)) {
     perror("Error - connection failed");
     exit(EXIT_FAILURE);
   }
 
   // set timeout
   struct timeval tv;
-  tv.tv_sec = 0;
+  tv.tv_sec = 1;
   tv.tv_usec = TIMEOUT;
   if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
     perror("Error - setting up timeout");
@@ -111,34 +111,33 @@ string poll(int sockfd, char* buf) {
   socklen_t len;
   string buffer_;
 
-  size_t findPos = buffer_.find('\0');
+  size_t findPos = buffer_.find(BATCH_DELIM);
   while (findPos == string::npos) {
     int num_read;
-    if ((num_read = recv(sockfd, (char*)buf, BUF_SIZE, MSG_WAITALL)) < 0) {
+    if ((num_read = recv(sockfd, (char*) buf, BUF_SIZE, MSG_WAITALL)) < 0) {
       perror("Timeout Error - failure to receive messages");
-      exit(EXIT_FAILURE);
+      //(EXIT_FAILURE);
     }
 
     if (num_read == 0) {
       break;
     } else if (num_read < 0) {
       perror("Timeout Error - failure to receive messages");
-      exit(EXIT_FAILURE);
+      //exit(EXIT_FAILURE);
     }
-    buffer_ += string(reinterpret_cast<char*>(buf), num_read);
-    findPos = buffer_.find('\0');
+    buffer_.append(string((char*) buf, num_read));
+    findPos = buffer_.find(BATCH_DELIM);
   }
-
-  return buffer_.substr(0, findPos - 1);  // read as {.}{.}\0, returned as {.}{.}
+  return buffer_.substr(0, findPos);  // read as {.}{.}\0, returned as {.}{.}
 }
 
 vector<Message> parseResponse(string response) {
   vector<Message> batch;
   int front = 0;
   for (int i = 0; i < response.size(); i++) {
-    if (response[i] = '}') {
-      batch.push_back(Message::deserialize(response.substr(front, i)));
-      front = i;
+    if (response[i] == '}') {
+      batch.push_back(Message::deserialize(response.substr(front, i + 1)));
+      front = i + 1;
     }
   }
   return batch;
