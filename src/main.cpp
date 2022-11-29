@@ -63,8 +63,7 @@ int main(int argc, char** argv) {
   servaddr.sin_port = htons(PORT);
 
   // connect to the server
-  if ((connect(sockfd, (const struct sockaddr*)&servaddr, sizeof(servaddr)) <
-       0)) {
+  if ((connect(sockfd, (const struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)) {
     perror("Error - connection failed");
     exit(EXIT_FAILURE);
   }
@@ -89,6 +88,8 @@ string poll(int sockfd, char* buf) {
     perror("Error - setting up timeout");
     exit(EXIT_FAILURE);
   }
+
+  // TODO: send request packet containing batch size
 
   int i;
   socklen_t len;
