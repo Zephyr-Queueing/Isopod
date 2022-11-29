@@ -11,11 +11,8 @@ all: clean mount install $(BDIR)/main
 $(BDIR)/main: $(ODIR)/main.o $(EDIR)/Message.h
 	$(CC) $(CFLAGS) -o $(BDIR)/main $(ODIR)/main.o $(EDIR)/message.a
 
-$(ODIR)/main.o: $(SDIR)/main.cpp  $(EDIR)/Message.h
+$(ODIR)/main.o: $(SDIR)/main.cpp $(EDIR)/Message.h
 	$(CC) $(CFLAGS) -o $(ODIR)/main.o -c $(SDIR)/main.cpp
-
-$(ODIR)/test.o: $(TDIR)/test.cpp $(SDIR)/Message.h $(SDIR)/main.o
-	$(CC) $(CFLAGS) -o $(ODIR)/test.o -c $(TDIR)/test.cpp -o $(ODIR)/main.o 
 
 install:
 	wget -P $(EDIR) https://github.com/Zephyr-Queueing/Quartz-Model/releases/download/v1.0.4/message.a;

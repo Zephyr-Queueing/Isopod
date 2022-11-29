@@ -42,7 +42,7 @@ bool process(vector<Message> messages);
 // Accepts server ip address as first arg
 int main(int argc, char** argv) {
   if (argc != 2) {
-    perror("Error: Incorrect number of arguments");
+    perror("Error - incorrect number of arguments");
     exit(EXIT_FAILURE);
   }
 
@@ -51,11 +51,11 @@ int main(int argc, char** argv) {
   struct sockaddr_in servaddr, cliaddr;
 
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-    perror("Error: Socket creation failed.");
+    perror("Error - socket creation failed");
     exit(EXIT_FAILURE);
   }
 
-  // Clear and set memory
+  // clear and set memory
   bzero(&servaddr, sizeof(servaddr));
   in_addr_t ip = inet_addr(argv[1]);
   servaddr.sin_family = AF_INET6;
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
   // connect to the server
   if ((connect(sockfd, (const struct sockaddr*)&servaddr, sizeof(servaddr)) <
        0)) {
-    perror("Error: Connection failed.");
+    perror("Error - connection failed");
     exit(EXIT_FAILURE);
   }
 
@@ -86,7 +86,7 @@ string poll(int sockfd, char* buf) {
   tv.tv_sec = 0;
   tv.tv_usec = TIMEOUT;
   if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-    perror("Error setting up timeout.");
+    perror("Error - setting up timeout");
     exit(EXIT_FAILURE);
   }
 
@@ -98,14 +98,14 @@ string poll(int sockfd, char* buf) {
   while (find_position == string::npos) {
     int num_read;
     if ((num_read = recv(sockfd, (char*)buf, MAXLINE, MSG_WAITALL)) < 0) {
-      perror("Timeout Error: Failure to Receive Messages.");
+      perror("Timeout Error - failure to receive messages");
       exit(EXIT_FAILURE);
     }
 
     if (num_read == 0) {
       break;
     } else if (num_read < 0) {
-      perror("Timeout Error: Failure to Receive Messages.");
+      perror("Timeout Error - failure to receive messages");
       exit(EXIT_FAILURE);
     }
     buffer_ += string(reinterpret_cast<char*>(buf), num_read);
