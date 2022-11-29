@@ -11,6 +11,7 @@
 #include <iostream>
 #include <vector>
 
+#define BATCH_SIZE "100"
 #define PORT 0
 #define MAXLINE 2048
 #define TIMEOUT 100000  // 100 ms
@@ -89,7 +90,22 @@ string poll(int sockfd, char* buf) {
     exit(EXIT_FAILURE);
   }
 
-  // TODO: send request packet containing batch size
+  // DONE: send request packet containing batch size
+  unsigned char requestPacket[sizeof(BATCH_SIZE)];
+  strcpy((char*) requestPacket, BATCH_SIZE);
+
+  while (true) {
+    int rd_val = send(sockfd, requestPacket, sizeof(requestPacket), 0);
+    if (rd_val == sizeof(requestPacket)) {
+      break;
+    } else {
+      if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
+        continue;
+      }
+      perror("Erorr - failed to send request");
+      exit(EXIT_FAILURE);
+    }
+  }
 
   int i;
   socklen_t len;
