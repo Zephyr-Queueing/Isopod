@@ -5,6 +5,7 @@ BDIR=bin
 ODIR=obj
 SDIR=src
 TDIR=test
+LDIR=log
 
 all: clean mount install $(BDIR)/main
 
@@ -23,4 +24,4 @@ mount:
 	mkdir $(EDIR) $(BDIR) $(ODIR)
 
 clean:
-	rm -rf $(EDIR) $(BDIR) $(ODIR)
+	rm -rf $(EDIR) $(BDIR) $(ODIR) $(LDIR)

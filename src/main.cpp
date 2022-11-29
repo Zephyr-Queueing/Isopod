@@ -13,8 +13,8 @@
 
 #define BATCH_SIZE "100"
 #define PORT 0
-#define MAXLINE 2048
-#define TIMEOUT 100000  // 100 ms
+#define BUF_SIZE 2048
+#define TIMEOUT 50000  // 50 ms
 
 using namespace std;
 
@@ -43,12 +43,12 @@ bool process(vector<Message> messages);
 // Accepts server ip address as first arg
 int main(int argc, char** argv) {
   if (argc != 2) {
-    perror("Error - incorrect number of arguments");
+    cerr << "Error - incorrect number of arguments" << endl;
     exit(EXIT_FAILURE);
   }
 
   int sockfd;
-  char buf[MAXLINE];
+  char buf[BUF_SIZE];
   struct sockaddr_in servaddr, cliaddr;
 
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -69,6 +69,15 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
+  // set timeout
+  struct timeval tv;
+  tv.tv_sec = 0;
+  tv.tv_usec = TIMEOUT;
+  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+    perror("Error - setting up timeout");
+    exit(EXIT_FAILURE);
+  }
+
   // Event Loop: Poll and Process
   while (true) {
     string response = poll(sockfd, buf);
@@ -81,16 +90,7 @@ int main(int argc, char** argv) {
 }
 
 string poll(int sockfd, char* buf) {
-  // set timeout
-  struct timeval tv;
-  tv.tv_sec = 0;
-  tv.tv_usec = TIMEOUT;
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-    perror("Error - setting up timeout");
-    exit(EXIT_FAILURE);
-  }
-
-  // DONE: send request packet containing batch size
+  // send request packet containing batch size
   unsigned char requestPacket[sizeof(BATCH_SIZE)];
   strcpy((char*) requestPacket, BATCH_SIZE);
 
@@ -102,7 +102,7 @@ string poll(int sockfd, char* buf) {
       if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
         continue;
       }
-      perror("Erorr - failed to send request");
+      perror("Error - failed to send request");
       exit(EXIT_FAILURE);
     }
   }
@@ -111,10 +111,10 @@ string poll(int sockfd, char* buf) {
   socklen_t len;
   string buffer_;
 
-  size_t find_position = buffer_.find('\0');
-  while (find_position == string::npos) {
+  size_t findPos = buffer_.find('\0');
+  while (findPos == string::npos) {
     int num_read;
-    if ((num_read = recv(sockfd, (char*)buf, MAXLINE, MSG_WAITALL)) < 0) {
+    if ((num_read = recv(sockfd, (char*)buf, BUF_SIZE, MSG_WAITALL)) < 0) {
       perror("Timeout Error - failure to receive messages");
       exit(EXIT_FAILURE);
     }
@@ -126,10 +126,10 @@ string poll(int sockfd, char* buf) {
       exit(EXIT_FAILURE);
     }
     buffer_ += string(reinterpret_cast<char*>(buf), num_read);
-    find_position = buffer_.find('\0');
+    findPos = buffer_.find('\0');
   }
 
-  return buffer_;
+  return buffer_.substr(0, findPos - 1);  // read as {.}{.}\0, returned as {.}{.}
 }
 
 vector<Message> parseResponse(string response) {
