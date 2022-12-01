@@ -13,12 +13,12 @@
 #include <iostream>
 #include <vector>
 
-#define INTERVAL 1000
-#define BATCH_SIZE "5"
+#define INTERVAL 500
+#define BATCH_SIZE "10"
 #define BATCH_DELIM '*'
 #define PORT 51711
-#define BUF_SIZE 2048
-#define TIMEOUT 50000  // 50 ms
+#define BUF_SIZE 8192
+#define TIMEOUT 5000  // 50 ms
 
 using namespace std;
 
