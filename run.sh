@@ -17,12 +17,16 @@ echo ""
 echo "Executing Isopod worker with $2 threads"
 
 mkdir log
-for ((t=$2-1; t>0; t=$t-1)); do
+
+t=$(( $2 - 1 ))
+while [ "$t" -gt 0 ]; do
     prefix="log/log.$(date +%Y-%m-%d)_T"
     suffix=".log"
     filename="$prefix$t$suffix"
     ./bin/main $1 | tee $filename & \
     echo "Worker $t on-line"
+    t=$(( t - 1 ))
 done
+
 ./bin/main $1 | tee "log/log.$(date +%Y-%m-%d)_T0.log"
 echo "Worker 0 on-line"
