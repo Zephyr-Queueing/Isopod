@@ -14,7 +14,7 @@ make
 echo ""
 echo "..."
 echo ""
-echo "Executing Isopod worker with $2 threads"
+echo "Executing Isopod worker with $2 thread(s)"
 
 mkdir log
 
