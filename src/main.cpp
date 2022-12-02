@@ -53,18 +53,18 @@ int main(int argc, char** argv) {
 
   int sockfd;
   char buf[BUF_SIZE];
-  struct sockaddr_in6 servaddr, cliaddr;
+  struct sockaddr_in servaddr, cliaddr;
 
-  if ((sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("Error - socket creation failed");
     exit(EXIT_FAILURE);
   }
 
   // clear and set memory
   bzero(&servaddr, sizeof(servaddr));
-  servaddr.sin6_family = AF_INET6;
-  inet_pton(AF_INET6, argv[1], &(servaddr.sin6_addr));
-  servaddr.sin6_port = htons(PORT);
+  servaddr.sin_family = AF_INET;
+  inet_pton(AF_INET, argv[1], &(servaddr.sin_addr));
+  servaddr.sin_port = htons(PORT);
 
   // connect to the server
   if ((connect(sockfd, (const struct sockaddr*) &servaddr, sizeof(servaddr)) < 0)) {
