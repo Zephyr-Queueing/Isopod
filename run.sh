@@ -10,7 +10,10 @@ if [ $2 -le 0 ]; then
 fi
 
 echo "Preparing..."
-make > /dev/null 2>&1
+make
+echo ""
+echo "..."
+echo ""
 echo "Executing Isopod worker with $2 threads"
 
 mkdir log
