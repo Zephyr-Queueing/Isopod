@@ -7,15 +7,18 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <thread>
+#include <chrono>
 
 #include <iostream>
 #include <vector>
 
-#define BATCH_SIZE "2"
+#define INTERVAL 500
+#define BATCH_SIZE "10"
 #define BATCH_DELIM '*'
 #define PORT 51711
-#define BUF_SIZE 2048
-#define TIMEOUT 50000  // 50 ms
+#define BUF_SIZE 8192
+#define TIMEOUT 5000  // 50 ms
 
 using namespace std;
 
@@ -80,7 +83,9 @@ int main(int argc, char** argv) {
 
   // Event Loop: Poll and Process
   while (true) {
+    this_thread::sleep_for(chrono::milliseconds(static_cast<int>(INTERVAL)));
     string response = poll(sockfd, buf);
+    cout << response << endl;
     vector<Message> messages = parseResponse(response);
     process(messages);
   }
@@ -136,7 +141,8 @@ vector<Message> parseResponse(string response) {
   int front = 0;
   for (int i = 0; i < response.size(); i++) {
     if (response[i] == '}') {
-      batch.push_back(Message::deserialize(response.substr(front, i + 1)));
+      cout << response.substr(front, i + 1 - front) << endl;
+      batch.push_back(Message::deserialize(response.substr(front, i + 1 - front)));
       front = i + 1;
     }
   }
