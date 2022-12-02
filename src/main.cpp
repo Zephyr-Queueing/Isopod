@@ -118,17 +118,16 @@ string poll(int sockfd, char* buf) {
 
   size_t findPos = buffer_.find(BATCH_DELIM);
   while (findPos == string::npos) {
-    int num_read;
-    if ((num_read = recv(sockfd, (char*) buf, BUF_SIZE, MSG_WAITALL)) < 0) {
-      perror("Timeout Error - failure to receive messages");
-      //(EXIT_FAILURE);
-    }
+    int num_read = recv(sockfd, (char*) buf, BUF_SIZE, MSG_WAITALL);
 
     if (num_read == 0) {
       break;
     } else if (num_read < 0) {
+       if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
+        continue;
+      }
       perror("Timeout Error - failure to receive messages");
-      //exit(EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
     buffer_.append(string((char*) buf, num_read));
     findPos = buffer_.find(BATCH_DELIM);
