@@ -1,20 +1,19 @@
 #include <Message.h>
-#include <assert.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
+#include <assert.h>
+#include <errno.h>
 #include <netdb.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
-#include <thread>
+
 #include <chrono>
-
-
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #define INTERVAL 500
@@ -23,11 +22,21 @@
 #define PORT 51711
 #define BUF_SIZE 8192
 #define TIMEOUT 5000  // 50 ms
-#define DEBUGGING true
 
 using namespace std;
 
 struct addrinfo hints;
+
+// Resolve DNS Name
+// Args:
+//  - char* name: Name of the server
+//  - unsigned short port: the port #
+//  - struct sockaddr_storage *ret_addr
+//  -   size_t *ret_addrlen
+// Returns:
+//  - bool: true on success, false otherwise.
+bool LookupName(char *name, unsigned short port,
+                struct sockaddr_storage *ret_addr, size_t *ret_addrlen);
 
 // Requests batch of work from server
 // Args:
@@ -35,7 +44,7 @@ struct addrinfo hints;
 //  - buf: the buffer to write into
 // Returns:
 //  - String: the payload returned from server (unparsed)
-string poll(int sockfd, char* buf);
+string poll(int sockfd, char *buf);
 
 // Parses the response from the server
 // Args:
@@ -51,32 +60,7 @@ vector<Message> parseResponse(string response);
 //  - bool: true on success, false otherwise.
 bool process(vector<Message> messages);
 
-
-// Resolve DNS Name
-// Args:
-//  - char* name: Name of the server
-//  - unsigned short port: the port #
-//  - struct sockaddr_storage *ret_addr
-//  -   size_t *ret_addrlen
-// Returns:
-//  - bool: true on success, false otherwise.
-bool LookupName(char *name,
-                unsigned short port,
-                struct sockaddr_storage *ret_addr,
-                size_t *ret_addrlen);
-
-
-// Read that handles trying again
-// Args: 
-//  - int fd: socket descriptor
-//  - unsigned char *buf: space to read into
-//  - int readlen: num of bytes to read ( <= buflen)
-// Returns:
-//  - int: num bytes read
-int WrappedRead(int fd, unsigned char *buf, int readlen);
-
-// Accepts server ip address as first arg
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   if (argc != 2) {
     cerr << "argc != 2" << endl;
     exit(EXIT_FAILURE);
@@ -89,7 +73,7 @@ int main(int argc, char** argv) {
     cerr << "LookupName() failed" << endl;
     exit(EXIT_FAILURE);
   }
-  
+
   int sockfd;
   if ((sockfd = socket(addr.ss_family, SOCK_DGRAM, 0)) < 0) {
     cerr << "socket() failed:" << strerror(errno) << endl;
@@ -125,10 +109,10 @@ int main(int argc, char** argv) {
   return EXIT_SUCCESS;
 }
 
-string poll(int sockfd, char* buf) {
+string poll(int sockfd, char *buf) {
   // send request packet containing batch size
   unsigned char requestPacket[sizeof(BATCH_SIZE)];
-  strcpy((char*) requestPacket, BATCH_SIZE);
+  strcpy((char *)requestPacket, BATCH_SIZE);
 
   while (true) {
     int rd_val = send(sockfd, requestPacket, sizeof(requestPacket), 0);
@@ -138,7 +122,7 @@ string poll(int sockfd, char* buf) {
       if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
         continue;
       }
-      cerr << "send() failed" << endl;
+      perror("Error - failed to send request");
       exit(EXIT_FAILURE);
     }
   }
@@ -149,15 +133,18 @@ string poll(int sockfd, char* buf) {
 
   size_t findPos = buffer_.find(BATCH_DELIM);
   while (findPos == string::npos) {
-    int num_read = WrappedRead(sockfd, (unsigned char*) buf, BUF_SIZE);
+    int num_read = recv(sockfd, (char *)buf, BUF_SIZE, MSG_WAITALL);
 
     if (num_read == 0) {
       break;
     } else if (num_read < 0) {
-     cerr << "WrappedRead() failed: " << strerror(errno) << endl;;
+      if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
+        continue;
+      }
+      perror("Timeout Error - failure to receive messages");
       exit(EXIT_FAILURE);
     }
-    buffer_.append(string((char*) buf, num_read));
+    buffer_.append(string((char *)buf, num_read));
     findPos = buffer_.find(BATCH_DELIM);
   }
   return buffer_.substr(0, findPos);  // read as {.}{.}\0, returned as {.}{.}
@@ -169,7 +156,8 @@ vector<Message> parseResponse(string response) {
   for (int i = 0; i < response.size(); i++) {
     if (response[i] == '}') {
       cout << response.substr(front, i + 1 - front) << endl;
-      batch.push_back(Message::deserialize(response.substr(front, i + 1 - front)));
+      batch.push_back(
+          Message::deserialize(response.substr(front, i + 1 - front)));
       front = i + 1;
     }
   }
@@ -184,11 +172,8 @@ bool process(vector<Message> messages) {
   return true;
 }
 
-
-bool LookupName(char *name,
-                unsigned short port,
-                struct sockaddr_storage *ret_addr,
-                size_t *ret_addrlen) {
+bool LookupName(char *name, unsigned short port,
+                struct sockaddr_storage *ret_addr, size_t *ret_addrlen) {
   // struct addrinfo hints, *results;
   struct addrinfo *results;
   int retval;
@@ -206,10 +191,10 @@ bool LookupName(char *name,
 
   // Set the port in the first result.
   if (results->ai_family == AF_INET) {
-    struct sockaddr_in *v4addr = (struct sockaddr_in *) results->ai_addr;
+    struct sockaddr_in *v4addr = (struct sockaddr_in *)results->ai_addr;
     v4addr->sin_port = htons(port);
   } else if (results->ai_family == AF_INET6) {
-    struct sockaddr_in6 *v6addr = (struct sockaddr_in6 *) results->ai_addr;
+    struct sockaddr_in6 *v6addr = (struct sockaddr_in6 *)results->ai_addr;
     v6addr->sin6_port = htons(port);
   } else {
     cerr << "getaddrinfo() failed to provide an IPv4 or IPv6 address";
@@ -226,17 +211,4 @@ bool LookupName(char *name,
   // Clean up.
   freeaddrinfo(results);
   return true;
-}
-
-int WrappedRead(int fd, unsigned char *buf, int readlen) {
-  int res;
-  while (1) {
-    res = read(fd, buf, readlen);
-    if (res == -1) {
-      if ((errno == EAGAIN) || (errno == EINTR))
-        continue;
-    }
-    break;
-  }
-  return res;
 }
