@@ -154,12 +154,8 @@ string poll(int sockfd, char* buf) {
     if (num_read == 0) {
       break;
     } else if (num_read < 0) {
-      if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
-        continue;
-      }
-      cerr << "WrappedRead() failed: " << strerror(errno) << endl;;
+     cerr << "WrappedRead() failed: " << strerror(errno) << endl;;
       exit(EXIT_FAILURE);
-
     }
     buffer_.append(string((char*) buf, num_read));
     findPos = buffer_.find(BATCH_DELIM);
