@@ -18,7 +18,7 @@
 
 #define INTERVAL 500
 #define BATCH_SIZE "10"
-#define BATCH_DELIM '*'
+#define DELIM '*'
 #define PORT 51711
 #define BUF_SIZE 8192
 #define TIMEOUT 5000  // 50 ms
@@ -59,6 +59,8 @@ vector<Message> parseResponse(string response);
 // Returns:
 //  - bool: true on success, false otherwise.
 bool process(vector<Message> messages);
+
+int lastBatchSize = -1;
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -110,9 +112,13 @@ int main(int argc, char **argv) {
 }
 
 string poll(int sockfd, char *buf) {
-  // send request packet containing batch size
-  unsigned char requestPacket[sizeof(BATCH_SIZE)];
-  strcpy((char *)requestPacket, BATCH_SIZE);
+  // send request packet containing batch size and last received batch size
+  const char* delimChar = string(1, DELIM).c_str();
+  const char* lastSize = to_string(lastBatchSize).c_str();
+  unsigned char requestPacket[sizeof(BATCH_SIZE) + sizeof(delimChar) + sizeof(lastSize)];
+  strcat((char *)requestPacket, BATCH_SIZE);
+  strcat((char *)requestPacket, delimChar);
+  strcat((char *)requestPacket, lastSize);
 
   while (true) {
     int rd_val = send(sockfd, requestPacket, sizeof(requestPacket), 0);
@@ -126,12 +132,13 @@ string poll(int sockfd, char *buf) {
       exit(EXIT_FAILURE);
     }
   }
+  lastBatchSize = 0;
 
   int i;
   socklen_t len;
   string buffer_;
 
-  size_t findPos = buffer_.find(BATCH_DELIM);
+  size_t findPos = buffer_.find(DELIM);
   while (findPos == string::npos) {
     int num_read = recv(sockfd, (char *)buf, BUF_SIZE, MSG_WAITALL);
 
@@ -145,7 +152,7 @@ string poll(int sockfd, char *buf) {
       exit(EXIT_FAILURE);
     }
     buffer_.append(string((char *)buf, num_read));
-    findPos = buffer_.find(BATCH_DELIM);
+    findPos = buffer_.find(DELIM);
   }
   return buffer_.substr(0, findPos);  // read as {.}{.}\0, returned as {.}{.}
 }
@@ -161,6 +168,7 @@ vector<Message> parseResponse(string response) {
       front = i + 1;
     }
   }
+  lastBatchSize = batch.size();
   return batch;
 }
 
