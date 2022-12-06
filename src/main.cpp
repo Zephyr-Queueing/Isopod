@@ -60,7 +60,8 @@ vector<Message> parseResponse(string response);
 //  - bool: true on success, false otherwise.
 bool process(vector<Message> messages);
 
-int lastBatchSize = -1;
+// Status of last batch, true on start or success and false on failure.
+bool lastStatus = true;
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -102,7 +103,6 @@ int main(int argc, char **argv) {
   while (true) {
     this_thread::sleep_for(chrono::milliseconds(static_cast<int>(INTERVAL)));
     string response = poll(sockfd, buf);
-    cout << response << endl;
     vector<Message> messages = parseResponse(response);
     process(messages);
   }
@@ -113,12 +113,14 @@ int main(int argc, char **argv) {
 
 string poll(int sockfd, char *buf) {
   // send request packet containing batch size and last received batch size
-  const char* delimChar = string(1, DELIM).c_str();
-  const char* lastSize = to_string(lastBatchSize).c_str();
-  unsigned char requestPacket[sizeof(BATCH_SIZE) + sizeof(delimChar) + sizeof(lastSize)];
+  const char delimChar = DELIM;
+  const char lastChar = lastStatus ? '0' : '1';
+  const char end = '\0';
+  unsigned char requestPacket[sizeof(BATCH_SIZE) + sizeof(DELIM) + sizeof(lastChar) + sizeof(end)];
   strcat((char *)requestPacket, BATCH_SIZE);
-  strcat((char *)requestPacket, delimChar);
-  strcat((char *)requestPacket, lastSize);
+  strcat((char *)requestPacket, &delimChar);
+  strcat((char *)requestPacket, &lastChar);
+  strcat((char *)requestPacket, &end);
 
   while (true) {
     int rd_val = send(sockfd, requestPacket, sizeof(requestPacket), 0);
@@ -132,7 +134,7 @@ string poll(int sockfd, char *buf) {
       exit(EXIT_FAILURE);
     }
   }
-  lastBatchSize = 0;
+  lastStatus = false;
 
   int i;
   socklen_t len;
@@ -162,19 +164,21 @@ vector<Message> parseResponse(string response) {
   int front = 0;
   for (int i = 0; i < response.size(); i++) {
     if (response[i] == '}') {
-      cout << response.substr(front, i + 1 - front) << endl;
       batch.push_back(
           Message::deserialize(response.substr(front, i + 1 - front)));
       front = i + 1;
     }
   }
-  lastBatchSize = batch.size();
+  lastStatus = true;
   return batch;
 }
 
 bool process(vector<Message> messages) {
   for (int i = 0; i < messages.size(); i++) {
-    cout << messages[i].data << endl;
+    cout << messages[i].data << ",";
+    cout << messages[i].priority << ",";
+    cout << messages[i].dequeueTime.count() << ",";
+    cout << messages[i].enqueueTime.count() << endl;
   }
   messages.clear();
   return true;
