@@ -18,7 +18,7 @@
 
 #define INTERVAL 500
 #define BATCH_SIZE "10"
-#define BATCH_DELIM '*'
+#define DELIM '*'
 #define PORT 51711
 #define BUF_SIZE 8192
 #define TIMEOUT 5000  // 50 ms
@@ -60,6 +60,9 @@ vector<Message> parseResponse(string response);
 //  - bool: true on success, false otherwise.
 bool process(vector<Message> messages);
 
+// Status of last batch, true on start or success and false on failure.
+bool lastStatus = true;
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     cerr << "argc != 2" << endl;
@@ -100,7 +103,6 @@ int main(int argc, char **argv) {
   while (true) {
     this_thread::sleep_for(chrono::milliseconds(static_cast<int>(INTERVAL)));
     string response = poll(sockfd, buf);
-    cout << response << endl;
     vector<Message> messages = parseResponse(response);
     process(messages);
   }
@@ -110,9 +112,15 @@ int main(int argc, char **argv) {
 }
 
 string poll(int sockfd, char *buf) {
-  // send request packet containing batch size
-  unsigned char requestPacket[sizeof(BATCH_SIZE)];
-  strcpy((char *)requestPacket, BATCH_SIZE);
+  // send request packet containing batch size and last received batch size
+  const char delimChar = DELIM;
+  const char lastChar = lastStatus ? '0' : '1';
+  const char end = '\0';
+  unsigned char requestPacket[sizeof(BATCH_SIZE) + sizeof(DELIM) + sizeof(lastChar) + sizeof(end)];
+  strcat((char *)requestPacket, BATCH_SIZE);
+  strcat((char *)requestPacket, &delimChar);
+  strcat((char *)requestPacket, &lastChar);
+  strcat((char *)requestPacket, &end);
 
   while (true) {
     int rd_val = send(sockfd, requestPacket, sizeof(requestPacket), 0);
@@ -126,12 +134,13 @@ string poll(int sockfd, char *buf) {
       exit(EXIT_FAILURE);
     }
   }
+  lastStatus = false;
 
   int i;
   socklen_t len;
   string buffer_;
 
-  size_t findPos = buffer_.find(BATCH_DELIM);
+  size_t findPos = buffer_.find(DELIM);
   while (findPos == string::npos) {
     int num_read = recv(sockfd, (char *)buf, BUF_SIZE, MSG_WAITALL);
 
@@ -145,7 +154,7 @@ string poll(int sockfd, char *buf) {
       exit(EXIT_FAILURE);
     }
     buffer_.append(string((char *)buf, num_read));
-    findPos = buffer_.find(BATCH_DELIM);
+    findPos = buffer_.find(DELIM);
   }
   return buffer_.substr(0, findPos);  // read as {.}{.}\0, returned as {.}{.}
 }
@@ -155,18 +164,21 @@ vector<Message> parseResponse(string response) {
   int front = 0;
   for (int i = 0; i < response.size(); i++) {
     if (response[i] == '}') {
-      cout << response.substr(front, i + 1 - front) << endl;
       batch.push_back(
           Message::deserialize(response.substr(front, i + 1 - front)));
       front = i + 1;
     }
   }
+  lastStatus = true;
   return batch;
 }
 
 bool process(vector<Message> messages) {
   for (int i = 0; i < messages.size(); i++) {
-    cout << messages[i].data << endl;
+    cout << messages[i].data << ",";
+    cout << messages[i].priority << ",";
+    cout << messages[i].dequeueTime.count() << ",";
+    cout << messages[i].enqueueTime.count() << endl;
   }
   messages.clear();
   return true;
