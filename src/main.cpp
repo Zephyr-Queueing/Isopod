@@ -25,6 +25,8 @@
 
 using namespace std;
 
+struct addrinfo hints;
+
 // Resolve DNS Name
 // Args:
 //  - char* name: Name of the server
@@ -110,7 +112,7 @@ int main(int argc, char **argv) {
 string poll(int sockfd, char *buf) {
   // send request packet containing batch size
   unsigned char requestPacket[sizeof(BATCH_SIZE)];
-  strcpy((char *) requestPacket, BATCH_SIZE);
+  strcpy((char *)requestPacket, BATCH_SIZE);
 
   while (true) {
     int rd_val = send(sockfd, requestPacket, sizeof(requestPacket), 0);
@@ -120,7 +122,7 @@ string poll(int sockfd, char *buf) {
       if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
         continue;
       }
-      cerr << "send() failed: " << strerror(errno) << endl;
+      perror("Error - failed to send request");
       exit(EXIT_FAILURE);
     }
   }
@@ -139,7 +141,7 @@ string poll(int sockfd, char *buf) {
       if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
         continue;
       }
-      cerr << "recv() failed: timeout" << endl;
+      perror("Timeout Error - failure to receive messages");
       exit(EXIT_FAILURE);
     }
     buffer_.append(string((char *)buf, num_read));
@@ -172,7 +174,8 @@ bool process(vector<Message> messages) {
 
 bool LookupName(char *name, unsigned short port,
                 struct sockaddr_storage *ret_addr, size_t *ret_addrlen) {
-  struct addrinfo hints, *results;
+  // struct addrinfo hints, *results;
+  struct addrinfo *results;
   int retval;
 
   memset(&hints, 0, sizeof(hints));
