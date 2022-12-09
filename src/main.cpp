@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
   struct sockaddr_storage addr;
   size_t addrlen;
   if (!LookupName(argv[1], PORT, &addr, &addrlen)) {
-    cerr << "LookupName() failed" << endl;
+    cerr << "LookupName() failed:" << strerror(errno) << endl;
     exit(EXIT_FAILURE);
   }
 
@@ -191,7 +191,7 @@ bool LookupName(char *name, unsigned short port,
   int retval;
 
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
+  hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_DGRAM;
 
   // Do the lookup by invoking getaddrinfo().
