@@ -130,7 +130,7 @@ string poll(int sockfd, char *buf) {
       if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
         continue;
       }
-      perror("Error - failed to send request");
+      cerr << "send() failed:" << strerror(errno) << endl;
       exit(EXIT_FAILURE);
     }
   }
@@ -150,7 +150,7 @@ string poll(int sockfd, char *buf) {
       if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) {
         continue;
       }
-      perror("Timeout Error - failure to receive messages");
+      cerr << "recv() failed: timeout";
       exit(EXIT_FAILURE);
     }
     buffer_.append(string((char *)buf, num_read));
@@ -206,7 +206,7 @@ bool LookupName(char *name, unsigned short port,
     struct sockaddr_in *v4addr = (struct sockaddr_in *)results->ai_addr;
     v4addr->sin_port = htons(port);
   } else {
-    cerr << "getaddrinfo() failed to provide an IPv4 or IPv6 address";
+    cerr << "getaddrinfo() failed to provide an IPv4 address";
     cerr << std::endl;
     freeaddrinfo(results);
     return false;
