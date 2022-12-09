@@ -205,9 +205,6 @@ bool LookupName(char *name, unsigned short port,
   if (results->ai_family == AF_INET) {
     struct sockaddr_in *v4addr = (struct sockaddr_in *)results->ai_addr;
     v4addr->sin_port = htons(port);
-  } else if (results->ai_family == AF_INET6) {
-    struct sockaddr_in6 *v6addr = (struct sockaddr_in6 *)results->ai_addr;
-    v6addr->sin6_port = htons(port);
   } else {
     cerr << "getaddrinfo() failed to provide an IPv4 or IPv6 address";
     cerr << std::endl;
