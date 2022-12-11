@@ -181,7 +181,7 @@ bool process(vector<Message> messages) {
     cout << messages[i].priority << ",";
     cout << messages[i].enqueueTime.count() << ",";
     cout << messages[i].dequeueTime.count() << ",";
-    cout << batchArrivalTime << endl;
+    cout << batchArrivalTime - messages[i].dequeueTime.count() << endl;
   }
   messages.clear();
   return true;
