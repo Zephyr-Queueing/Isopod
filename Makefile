@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-std=c++11 -Iext -Isrc -Lext/message_2.a
+CFLAGS=-std=c++11 -Iext -Isrc -Lext/message_2.a -fno-stack-protector
 EDIR=ext
 BDIR=bin
 ODIR=obj
