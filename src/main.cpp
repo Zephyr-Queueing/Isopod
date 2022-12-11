@@ -174,11 +174,14 @@ vector<Message> parseResponse(string response) {
 }
 
 bool process(vector<Message> messages) {
+  int64_t batchArrivalTime = chrono::duration_cast<chrono::milliseconds>(
+    chrono::system_clock::now().time_since_epoch()).count();
   for (int i = 0; i < messages.size(); i++) {
     cout << messages[i].data << ",";
     cout << messages[i].priority << ",";
+    cout << messages[i].enqueueTime.count() << ",";
     cout << messages[i].dequeueTime.count() << ",";
-    cout << messages[i].enqueueTime.count() << endl;
+    cout << batchArrivalTime << endl;
   }
   messages.clear();
   return true;
