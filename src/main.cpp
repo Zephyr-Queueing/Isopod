@@ -21,6 +21,7 @@
 #define PORT 51711
 #define BUF_SIZE 8192
 #define TIMEOUT 5000  // 50 ms
+#define INTERVAL 500 // ms
 
 using namespace std;
 
@@ -100,6 +101,7 @@ int main(int argc, char **argv) {
   // Event Loop: Poll and Process
   char buf[BUF_SIZE];
   while (true) {
+    this_thread::sleep_for(chrono::milliseconds(static_cast<int>(INTERVAL)));
     string response = poll(sockfd, buf);
     vector<Message> messages = parseResponse(response);
     process(messages);
@@ -172,14 +174,11 @@ vector<Message> parseResponse(string response) {
 }
 
 bool process(vector<Message> messages) {
-  int64_t batchArrivalTime = chrono::duration_cast<chrono::milliseconds>(
-    chrono::system_clock::now().time_since_epoch()).count();
   for (int i = 0; i < messages.size(); i++) {
     cout << messages[i].data << ",";
     cout << messages[i].priority << ",";
-    cout << messages[i].enqueueTime.count() << ",";
     cout << messages[i].dequeueTime.count() << ",";
-    cout << batchArrivalTime - messages[i].dequeueTime.count() << endl;
+    cout << messages[i].enqueueTime.count() << endl;
   }
   messages.clear();
   return true;
