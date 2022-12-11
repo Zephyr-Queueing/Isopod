@@ -20,13 +20,13 @@ mkdir log
 
 t=$(( $2 - 1 ))
 while [ "$t" -gt 0 ]; do
-    prefix="log/log.$(date +%Y-%m-%d)_T"
+    prefix="log/log_T"
     suffix=".log"
     filename="$prefix$t$suffix"
-    ./bin/main $1 | tee $filename & \
+    ./bin/main $1 >> $filename & \
     echo "Worker $t on-line"
     t=$(( t - 1 ))
 done
 
-./bin/main $1 | tee "log/log.$(date +%Y-%m-%d)_T0.log"
+./bin/main $1 >> "log/log_T0.log"
 echo "Worker 0 on-line"
