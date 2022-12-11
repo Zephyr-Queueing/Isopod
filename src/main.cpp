@@ -16,7 +16,6 @@
 #include <thread>
 #include <vector>
 
-#define INTERVAL 500
 #define BATCH_SIZE "10"
 #define DELIM '*'
 #define PORT 51711
@@ -101,7 +100,6 @@ int main(int argc, char **argv) {
   // Event Loop: Poll and Process
   char buf[BUF_SIZE];
   while (true) {
-    this_thread::sleep_for(chrono::milliseconds(static_cast<int>(INTERVAL)));
     string response = poll(sockfd, buf);
     vector<Message> messages = parseResponse(response);
     process(messages);
