@@ -28,5 +28,5 @@ while [ "$t" -gt 0 ]; do
     t=$(( t - 1 ))
 done
 
-./bin/main $1 >> log/log_T0.log
 echo "Worker 0 on-line"
+./bin/main $1 >> log/log_T0.log
